@@ -150,7 +150,7 @@ Implementing a custom learner in pure Python is accomplished by
  - implementing its :meth:`~cntk.learner.UserLearner.update` method
 
 Here is an example, how normal stochastic gradient descent would be
-reimplemented::
+reimplemented in a naive way::
 
     from cntk.learner import UserLearner
 
@@ -162,8 +162,8 @@ reimplemented::
         def update(self, gradient_values, training_sample_count, sweep_end):
             eta = self.learning_rate() / training_sample_count
             for p, g in gradient_values.items():
-                newp = p - eta * C.constant(g)
-                p.set_value(newp.eval(as_numpy=False).data())
+                new_p = p - eta * C.constant(g)
+                p.set_value(new_p.eval(as_numpy=False).data())
             return True
 
 The class ``MySgd`` could then be used as a normal learner, e.g.::
@@ -171,6 +171,11 @@ The class ``MySgd`` could then be used as a normal learner, e.g.::
     # z, ce, pe = <your model, loss and evaluation functions>
     # lr_per_minibatch = <your learning rate specification>
     trainer = Trainer(z, (ce, pe), MySgd(z.parameters, lr_per_minibatch))
+
+While this approach might be good enough as a one-off, it is not the fastest
+possible UserLearner implementation. In every call, a complete CNTK graph is
+created and then destructed (``new_p``). To speed up the parameter update, this
+computation can be moved to the constructor. 
 
 Before starting a new learner, though, please check out :mod:`cntk.learner`
 whether your learner is already available.
